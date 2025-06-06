@@ -352,6 +352,10 @@ export class InvoicesService {
         where: { id: updateInvoiceDto.branchId || invoice.branchId },
       });
 
+      if (!branch) {
+        throw new NotFoundException('Branch not found');
+      }
+
       const taxRule = await this.prisma.taxRule.findUnique({
         where: { province: branch.province },
       });
