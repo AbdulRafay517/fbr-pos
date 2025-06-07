@@ -1,34 +1,79 @@
 import { useEffect, useState } from "react";
-import axios from "../api/axios";
+import { invoicesApi, formatDate, formatCurrency } from "../api/invoices";
+import type { Invoice, InvoiceStatus, UpdateInvoiceStatusData } from "../api/invoices";
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
-
-type Invoice = {
-  id: string;
-  invoiceNumber: string;
-  date: string;
-  dueDate: string;
-  client: { name: string };
-  branch: { name: string };
-  totalAmount: number;
-  status: string;
-};
+import InvoiceStatusBadge from "../components/InvoiceStatusBadge";
+import InvoiceStatusModal from "../components/InvoiceStatusModal";
 
 export default function Invoices() {
   const { token } = useAuth();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<InvoiceStatus | "">("");
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const fetchInvoices = async () => {
+    try {
+      setLoading(true);
+      const params: any = { page, limit: 10 };
+      
+      if (statusFilter) {
+        const response = await invoicesApi.getInvoicesByStatus(statusFilter, page, 10);
+        setInvoices(response.data.data);
+        setTotalPages(response.data.meta.totalPages);
+      } else {
+        const response = await invoicesApi.getAll(params);
+        setInvoices(response.data.data);
+        setTotalPages(response.data.meta.totalPages);
+      }
+    } catch (error) {
+      console.error('Failed to fetch invoices:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    axios
-      .get("/invoices")
-      .then((res) => setInvoices(res.data.data))
-      .finally(() => setLoading(false));
-  }, [token]);
+    fetchInvoices();
+  }, [token, page, statusFilter]);
 
-  if (loading) return <div className="p-6">Loading...</div>;
+  const handleStatusUpdate = async (data: UpdateInvoiceStatusData) => {
+    if (!selectedInvoice) return;
+
+    try {
+      await invoicesApi.updateStatus(selectedInvoice.id, data);
+      await fetchInvoices(); // Refresh the list
+    } catch (error) {
+      console.error('Failed to update status:', error);
+      throw error;
+    }
+  };
+
+  const handleQuickStatusUpdate = async (invoice: Invoice, status: InvoiceStatus) => {
+    try {
+      await invoicesApi.updateStatus(invoice.id, { status });
+      await fetchInvoices(); // Refresh the list
+    } catch (error) {
+      console.error('Failed to update status:', error);
+    }
+  };
+
+  const openStatusModal = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setIsStatusModalOpen(true);
+  };
+
+  const closeStatusModal = () => {
+    setSelectedInvoice(null);
+    setIsStatusModalOpen(false);
+  };
+
+  if (loading && page === 1) return <div className="p-6">Loading...</div>;
 
   return (
     <div className="p-6">
@@ -63,12 +108,13 @@ export default function Invoices() {
               <select
                 className="border border-gray-300 rounded-md px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={statusFilter}
-                onChange={e => setStatusFilter(e.target.value)}
+                onChange={e => setStatusFilter(e.target.value as InvoiceStatus | "")}
               >
-                <option value="">Filter by Status</option>
-                <option value="Paid">Paid</option>
-                <option value="Unpaid">Unpaid</option>
-                <option value="Overdue">Overdue</option>
+                <option value="">All Statuses</option>
+                <option value="UNPAID">Unpaid</option>
+                <option value="PAID">Paid</option>
+                <option value="DUE_SOON">Due Soon</option>
+                <option value="OVERDUE">Overdue</option>
               </select>
             </div>
             <Link
@@ -89,31 +135,63 @@ export default function Invoices() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {invoices.map((inv) => (
-                <tr key={inv.id} className="hover:bg-gray-50">
+              {invoices.map((invoice) => (
+                <tr key={invoice.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {inv.invoiceNumber || `ADA${inv.id.slice(-3)}`}
+                    {invoice.invoiceNumber}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {inv.client?.name || 'N/A'}
+                    {invoice.client.name}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(inv.date).toLocaleDateString()}
+                    {formatDate(invoice.date)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : 'N/A'}
+                    {invoice.dueDate ? formatDate(invoice.dueDate) : 'No due date'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {formatCurrency(invoice.totalAmount)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <InvoiceStatusBadge status={invoice.status} />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <Link
-                      to={`/invoices/${inv.id}`}
-                      className="text-blue-600 hover:text-blue-900"
-                    >
-                      View
-                    </Link>
+                    <div className="flex items-center space-x-2">
+                      <Link
+                        to={`/invoices/${invoice.id}`}
+                        className="text-blue-600 hover:text-blue-900"
+                      >
+                        View
+                      </Link>
+                      <button
+                        onClick={() => openStatusModal(invoice)}
+                        className="text-gray-600 hover:text-gray-900"
+                      >
+                        Status
+                      </button>
+                      {invoice.status === 'UNPAID' && (
+                        <button
+                          onClick={() => handleQuickStatusUpdate(invoice, 'PAID')}
+                          className="text-green-600 hover:text-green-900"
+                        >
+                          Mark Paid
+                        </button>
+                      )}
+                      {invoice.status === 'PAID' && (
+                        <button
+                          onClick={() => handleQuickStatusUpdate(invoice, 'UNPAID')}
+                          className="text-yellow-600 hover:text-yellow-900"
+                        >
+                          Mark Unpaid
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -121,12 +199,49 @@ export default function Invoices() {
           </table>
         </div>
 
-        {invoices.length === 0 && (
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+            <div className="text-sm text-gray-700">
+              Page {page} of {totalPages}
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setPage(page - 1)}
+                disabled={page === 1}
+                className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => setPage(page + 1)}
+                disabled={page === totalPages}
+                className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+
+        {invoices.length === 0 && !loading && (
           <div className="p-6 text-center text-gray-500">
-            No invoices found. <Link to="/invoices/new" className="text-blue-600 hover:underline">Create your first invoice</Link>
+            {statusFilter ? `No ${statusFilter.toLowerCase()} invoices found.` : 'No invoices found.'}{' '}
+            <Link to="/invoices/new" className="text-blue-600 hover:underline">Create your first invoice</Link>
           </div>
         )}
       </div>
+
+      {/* Status Update Modal */}
+      {selectedInvoice && (
+        <InvoiceStatusModal
+          isOpen={isStatusModalOpen}
+          onClose={closeStatusModal}
+          onUpdate={handleStatusUpdate}
+          currentStatus={selectedInvoice.status}
+          invoiceNumber={selectedInvoice.invoiceNumber}
+        />
+      )}
     </div>
   );
 }

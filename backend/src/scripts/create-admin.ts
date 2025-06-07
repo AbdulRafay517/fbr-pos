@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 async function createAdminUser() {
   try {
     const adminData = {
-      email: 'admin@example.com',
+      email: 'admin@fbrpos.com',
       password: await bcrypt.hash('admin123', 10),
       name: 'System Admin',
       role: 'ADMIN' as const,

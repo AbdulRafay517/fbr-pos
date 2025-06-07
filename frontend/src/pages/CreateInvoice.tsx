@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { invoicesApi } from "../api/invoices";
+import type { CreateInvoiceData } from "../api/invoices";
 import axios from "../api/axios";
 import { useNavigate } from "react-router-dom";
 
@@ -54,14 +56,16 @@ export default function CreateInvoice() {
     setError("");
     setSubmitting(true);
     try {
-      await axios.post("/invoices", {
+      const invoiceData: CreateInvoiceData = {
         clientId,
         branchId,
         date: issueDate,
-        dueDate,
+        dueDate: dueDate || undefined,
         items,
-        notes,
-      });
+        notes: notes || undefined,
+      };
+      
+      await invoicesApi.create(invoiceData);
       navigate("/invoices");
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to create invoice");
