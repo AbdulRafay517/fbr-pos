@@ -16,6 +16,13 @@ enum UserRole {
   VIEWER
 }
 
+enum InvoiceStatus {
+  UNPAID
+  PAID
+  DUE_SOON
+  OVERDUE
+}
+
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
@@ -51,23 +58,26 @@ model Branch {
 }
 
 model Invoice {
-  id            String   @id @default(uuid())
-  invoiceNumber String   @unique
+  id            String        @id @default(uuid())
+  invoiceNumber String        @unique
   date          DateTime
+  dueDate       DateTime?
+  status        InvoiceStatus @default(UNPAID)
   subtotal      Float
   taxAmount     Float
   totalAmount   Float
   pdfUrl        String?
   notes         String?
   clientId      String
-  client        Client   @relation(fields: [clientId], references: [id])
+  client        Client        @relation(fields: [clientId], references: [id])
   branchId      String
-  branch        Branch   @relation(fields: [branchId], references: [id])
+  branch        Branch        @relation(fields: [branchId], references: [id])
   createdById   String
-  createdBy     User     @relation(fields: [createdById], references: [id])
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdBy     User          @relation(fields: [createdById], references: [id])
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
   items         InvoiceItem[]
+  statusHistory InvoiceStatusHistory[]
 }
 
 model InvoiceItem {
@@ -82,6 +92,16 @@ model InvoiceItem {
   updatedAt   DateTime @updatedAt
 }
 
+model InvoiceStatusHistory {
+  id        String        @id @default(uuid())
+  invoiceId String
+  invoice   Invoice       @relation(fields: [invoiceId], references: [id])
+  status    InvoiceStatus
+  changedBy String?       // User ID who changed the status (null for automatic changes)
+  reason    String?       // Reason for status change
+  createdAt DateTime      @default(now())
+}
+
 model TaxRule {
   id        String   @id @default(uuid())
   province  String   @unique
@@ -89,4 +109,13 @@ model TaxRule {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model SystemConfig {
+  id              String   @id @default(uuid())
+  key             String   @unique
+  value           String
+  description     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }

@@ -1,4 +1,4 @@
-import { IsArray, IsNotEmpty, IsNumber, IsString, IsUUID, Min, IsOptional } from 'class-validator';
+import { IsArray, IsNotEmpty, IsNumber, IsString, IsUUID, Min, IsOptional, IsDateString } from 'class-validator';
 
 export class InvoiceItemDto {
   @IsNotEmpty()
@@ -24,6 +24,14 @@ export class CreateInvoiceDto {
   @IsNotEmpty()
   @IsUUID()
   branchId: string;
+
+  @IsOptional()
+  @IsDateString()
+  date?: string;
+
+  @IsOptional()
+  @IsDateString()
+  dueDate?: string;
 
   @IsArray()
   @IsNotEmpty()

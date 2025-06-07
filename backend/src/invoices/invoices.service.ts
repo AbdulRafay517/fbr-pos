@@ -51,11 +51,16 @@ export class InvoicesService {
     // Generate invoice number (you might want to make this more sophisticated)
     const invoiceNumber = `INV-${Date.now()}`;
 
+    // Parse dates
+    const invoiceDate = createInvoiceDto.date ? new Date(createInvoiceDto.date) : new Date();
+    const dueDate = createInvoiceDto.dueDate ? new Date(createInvoiceDto.dueDate) : null;
+
     // Create invoice
     const invoice = await this.prisma.invoice.create({
       data: {
         invoiceNumber,
-        date: new Date(),
+        date: invoiceDate,
+        dueDate,
         subtotal,
         taxAmount,
         totalAmount,
@@ -70,12 +75,23 @@ export class InvoicesService {
             total: item.quantity * item.unitPrice,
           })),
         },
+        statusHistory: {
+          create: {
+            status: 'UNPAID',
+            changedBy: userId,
+            reason: 'Invoice created',
+          },
+        },
       },
       include: {
         client: true,
         branch: true,
         createdBy: true,
         items: true,
+        statusHistory: {
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+        },
       },
     });
 

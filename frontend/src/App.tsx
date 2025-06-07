@@ -8,6 +8,7 @@ import CreateInvoice from "./pages/CreateInvoice";
 import Clients from "./pages/Clients";
 import TaxConfig from "./pages/TaxConfig";
 import Users from "./pages/Users";
+import Layout from "./components/Layout";
 
 function App() {
   return (
@@ -18,7 +19,9 @@ function App() {
           path="/"
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <Layout>
+                <Dashboard />
+              </Layout>
             </ProtectedRoute>
           }
         />
@@ -26,7 +29,9 @@ function App() {
           path="/invoices"
           element={
             <ProtectedRoute>
-              <Invoices />
+              <Layout>
+                <Invoices />
+              </Layout>
             </ProtectedRoute>
           }
         />
@@ -34,7 +39,9 @@ function App() {
           path="/invoices/:id"
           element={
             <ProtectedRoute>
-              <InvoiceDetails />
+              <Layout>
+                <InvoiceDetails />
+              </Layout>
             </ProtectedRoute>
           }
         />
@@ -42,7 +49,9 @@ function App() {
           path="/invoices/new"
           element={
             <ProtectedRoute>
-              <CreateInvoice />
+              <Layout>
+                <CreateInvoice />
+              </Layout>
             </ProtectedRoute>
           }
         />
@@ -50,7 +59,9 @@ function App() {
           path="/clients"
           element={
             <ProtectedRoute>
-              <Clients />
+              <Layout>
+                <Clients />
+              </Layout>
             </ProtectedRoute>
           }
         />
@@ -58,7 +69,9 @@ function App() {
           path="/taxes"
           element={
             <ProtectedRoute>
-              <TaxConfig />
+              <Layout>
+                <TaxConfig />
+              </Layout>
             </ProtectedRoute>
           }
         />
@@ -66,7 +79,9 @@ function App() {
           path="/users"
           element={
             <ProtectedRoute>
-              <Users />
+              <Layout>
+                <Users />
+              </Layout>
             </ProtectedRoute>
           }
         />
