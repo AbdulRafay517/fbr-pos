@@ -117,12 +117,12 @@ export default function Invoices() {
                 <option value="OVERDUE">Overdue</option>
               </select>
             </div>
-            <Link
-              to="/invoices/new"
+      <Link
+        to="/invoices/new"
               className="ml-auto bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-            >
-              + New Invoice
-            </Link>
+      >
+        + New Invoice
+      </Link>
           </div>
         </div>
 
@@ -138,8 +138,8 @@ export default function Invoices() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
+          </tr>
+        </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {invoices.map((invoice) => (
                 <tr key={invoice.id} className="hover:bg-gray-50">
@@ -163,12 +163,12 @@ export default function Invoices() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center space-x-2">
-                      <Link
+                <Link
                         to={`/invoices/${invoice.id}`}
                         className="text-blue-600 hover:text-blue-900"
-                      >
-                        View
-                      </Link>
+                >
+                  View
+                </Link>
                       <button
                         onClick={() => openStatusModal(invoice)}
                         className="text-gray-600 hover:text-gray-900"
@@ -192,11 +192,11 @@ export default function Invoices() {
                         </button>
                       )}
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
         </div>
 
         {/* Pagination */}

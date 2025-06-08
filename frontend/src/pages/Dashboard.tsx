@@ -24,7 +24,7 @@ export default function Dashboard() {
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
       } finally {
-        setLoading(false);
+      setLoading(false);
       }
     };
 
@@ -85,9 +85,9 @@ export default function Dashboard() {
             <h2 className="text-lg font-medium text-gray-900">Recent Invoices</h2>
           </div>
           <div className="overflow-x-auto">
-            {loading ? (
+        {loading ? (
               <div className="p-6 text-center text-gray-500">Loading...</div>
-            ) : recent.length === 0 ? (
+        ) : recent.length === 0 ? (
               <div className="p-6 text-center text-gray-500">No invoices yet. Create your first invoice!</div>
             ) : (
               <table className="min-w-full divide-y divide-gray-200">
@@ -140,8 +140,8 @@ export default function Dashboard() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  </tr>
-                </thead>
+              </tr>
+            </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {urgentInvoices.map(invoice => (
                     <tr key={invoice.id} className="hover:bg-gray-50">
@@ -156,12 +156,12 @@ export default function Dashboard() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <InvoiceStatusBadge status={invoice.status} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
           </div>
         </div>
       </div>

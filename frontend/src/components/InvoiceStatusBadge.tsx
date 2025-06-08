@@ -1,5 +1,6 @@
 import React from 'react';
-import { InvoiceStatus, getStatusColor, getStatusLabel } from '../api/invoices';
+import type { InvoiceStatus } from '../api/invoices';
+import { getStatusColor, getStatusLabel } from '../api/invoices';
 
 interface InvoiceStatusBadgeProps {
   status: InvoiceStatus;

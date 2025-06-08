@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { InvoiceStatus, UpdateInvoiceStatusData, getStatusLabel } from '../api/invoices';
+import type { InvoiceStatus, UpdateInvoiceStatusData } from '../api/invoices';
+import { getStatusLabel } from '../api/invoices';
 
 interface InvoiceStatusModalProps {
   isOpen: boolean;

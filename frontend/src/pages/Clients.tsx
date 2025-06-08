@@ -20,7 +20,7 @@ export default function Clients() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
-  const [type, setType] = useState("client");
+  const [type, setType] = useState("CLIENT");
   const [contact, setContact] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -44,7 +44,7 @@ export default function Clients() {
     try {
       await axios.post("/clients", { name, type, contact });
       setName("");
-      setType("client");
+      setType("CLIENT");
       setContact("");
       fetchClients();
     } catch (err: any) {
