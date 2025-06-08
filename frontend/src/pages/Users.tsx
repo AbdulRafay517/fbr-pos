@@ -19,6 +19,17 @@ export default function Users() {
   const [submitting, setSubmitting] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
 
+  // Session configuration state
+  const [sessionConfig, setSessionConfig] = useState(() => {
+    const stored = localStorage.getItem("sessionConfig");
+    const defaultConfig = {
+      timeoutMinutes: 30,
+      warningMinutes: 5,
+      logoutOnTabClose: false,
+    };
+    return stored ? { ...defaultConfig, ...JSON.parse(stored) } : defaultConfig;
+  });
+
   const fetchUsers = () => {
     setLoading(true);
     axios.get("/users").then(res => {
@@ -187,6 +198,103 @@ export default function Users() {
           ))}
         </tbody>
       </table>
+
+      {/* Session Configuration Section */}
+      <div className="mt-8 bg-white p-6 rounded shadow">
+        <h2 className="text-xl font-bold mb-4">Session Configuration</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block mb-2 font-medium">Session Timeout (minutes)</label>
+            <input
+              type="number"
+              min="5"
+              max="480"
+              className="border px-3 py-2 rounded w-full"
+              value={(() => {
+                const stored = localStorage.getItem("sessionConfig");
+                const config = stored ? JSON.parse(stored) : { timeoutMinutes: 30 };
+                return config.timeoutMinutes;
+              })()}
+              onChange={(e) => {
+                const stored = localStorage.getItem("sessionConfig");
+                const currentConfig = stored ? JSON.parse(stored) : { timeoutMinutes: 30, warningMinutes: 5, logoutOnTabClose: false };
+                const newConfig = { ...currentConfig, timeoutMinutes: parseInt(e.target.value) };
+                localStorage.setItem("sessionConfig", JSON.stringify(newConfig));
+              }}
+            />
+            <p className="text-sm text-gray-600 mt-1">Time before automatic logout due to inactivity</p>
+          </div>
+          
+          <div>
+            <label className="block mb-2 font-medium">Warning Time (minutes)</label>
+            <input
+              type="number"
+              min="1"
+              max="30"
+              className="border px-3 py-2 rounded w-full"
+              value={(() => {
+                const stored = localStorage.getItem("sessionConfig");
+                const config = stored ? JSON.parse(stored) : { warningMinutes: 5 };
+                return config.warningMinutes;
+              })()}
+              onChange={(e) => {
+                const stored = localStorage.getItem("sessionConfig");
+                const currentConfig = stored ? JSON.parse(stored) : { timeoutMinutes: 30, warningMinutes: 5, logoutOnTabClose: false };
+                const newConfig = { ...currentConfig, warningMinutes: parseInt(e.target.value) };
+                localStorage.setItem("sessionConfig", JSON.stringify(newConfig));
+              }}
+            />
+            <p className="text-sm text-gray-600 mt-1">Time before timeout to show warning</p>
+          </div>
+          
+          <div>
+            <label className="block mb-2 font-medium">Logout on Tab Close</label>
+            <div className="flex items-center space-x-2 mt-2">
+              <input
+                type="checkbox"
+                id="logoutOnTabClose"
+                className="rounded"
+                checked={(() => {
+                  const stored = localStorage.getItem("sessionConfig");
+                  const config = stored ? JSON.parse(stored) : { logoutOnTabClose: false };
+                  return config.logoutOnTabClose;
+                })()}
+                onChange={(e) => {
+                  const stored = localStorage.getItem("sessionConfig");
+                  const currentConfig = stored ? JSON.parse(stored) : { timeoutMinutes: 30, warningMinutes: 5, logoutOnTabClose: false };
+                  const newConfig = { ...currentConfig, logoutOnTabClose: e.target.checked };
+                  localStorage.setItem("sessionConfig", JSON.stringify(newConfig));
+                }}
+              />
+              <label htmlFor="logoutOnTabClose" className="text-sm">
+                Automatically logout when browser tab is closed
+              </label>
+            </div>
+            <p className="text-sm text-gray-600 mt-1">Forces re-authentication on new sessions</p>
+          </div>
+        </div>
+        
+        <div className="mt-4 p-4 bg-blue-50 rounded">
+          <h3 className="font-medium text-blue-900 mb-2">Current Session Status</h3>
+          <div className="text-sm text-blue-800">
+            <p>Session timeout: {(() => {
+              const stored = localStorage.getItem("sessionConfig");
+              const config = stored ? JSON.parse(stored) : { timeoutMinutes: 30 };
+              return config.timeoutMinutes;
+            })()} minutes</p>
+            <p>Warning appears: {(() => {
+              const stored = localStorage.getItem("sessionConfig");
+              const config = stored ? JSON.parse(stored) : { warningMinutes: 5 };
+              return config.warningMinutes;
+            })()} minutes before timeout</p>
+            <p>Logout on tab close: {(() => {
+              const stored = localStorage.getItem("sessionConfig");
+              const config = stored ? JSON.parse(stored) : { logoutOnTabClose: false };
+              return config.logoutOnTabClose ? "Enabled" : "Disabled";
+            })()}</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

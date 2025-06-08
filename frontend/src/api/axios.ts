@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const instance = axios.create({
-  baseURL: "http://localhost:3000/api", // Change if needed
+  baseURL: "http://localhost:3000/api",
   headers: {
     "Content-Type": "application/json",
   },
@@ -18,6 +18,25 @@ instance.interceptors.request.use(
     return config;
   },
   (error) => Promise.reject(error)
+);
+
+// Handle response errors (including token expiration)
+instance.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Token is invalid or expired
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      localStorage.removeItem("lastActivity");
+      
+      // Redirect to login page if not already there
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
+    }
+    return Promise.reject(error);
+  }
 );
 
 export default instance;
