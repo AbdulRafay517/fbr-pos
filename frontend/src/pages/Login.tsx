@@ -37,7 +37,7 @@ export default function Login() {
         className="bg-gray-900 rounded-2xl shadow-xl p-8 max-w-sm w-full"
       >
         <div className="text-center mb-6">
-          <div className="text-white text-3xl font-bold mb-2">FBR POS</div>
+                        <div className="text-white text-3xl font-bold mb-2">TaxFlow</div>
           <div className="text-gray-400">Sign in to your account</div>
         </div>
         {error && <div className="mb-4 text-red-400">{error}</div>}

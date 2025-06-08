@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { SessionStatus } from "./SessionStatus";
 
 const navItems = [
   { label: "Dashboard", path: "/" },
@@ -18,7 +19,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Sidebar */}
       <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
         <div className="p-6">
-          <h1 className="text-2xl font-bold text-gray-900">FBR POS</h1>
+          <h1 className="text-2xl font-bold text-gray-900">TaxFlow</h1>
         </div>
         <nav className="flex-1 px-4 space-y-2">
           {navItems
@@ -51,6 +52,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <main className="flex-1 overflow-auto">
         {children}
       </main>
+      
+      {/* Session Status */}
+      <SessionStatus />
     </div>
   );
 }
