@@ -26,6 +26,10 @@ export class CreateInvoiceDto {
   branchId: string;
 
   @IsOptional()
+  @IsUUID()
+  taxRuleId?: string;
+
+  @IsOptional()
   @IsDateString()
   date?: string;
 

@@ -169,7 +169,7 @@ export class InvoicesController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   remove(@Param('id') id: string) {
     this.logger.log(`Deleting invoice: ${id}`);
     return this.invoicesService.remove(id);

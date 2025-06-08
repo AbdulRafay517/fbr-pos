@@ -5,12 +5,16 @@ import ProtectedRoute from "./routes/ProtectedRoute";
 import Invoices from "./pages/Invoices";
 import InvoiceDetails from "./pages/InvoiceDetails";
 import CreateInvoice from "./pages/CreateInvoice";
+import EditInvoice from "./pages/EditInvoice";
 import Clients from "./pages/Clients";
 import TaxConfig from "./pages/TaxConfig";
 import Users from "./pages/Users";
 import Layout from "./components/Layout";
+import { useAuth } from "./context/AuthContext";
 
 function App() {
+  const { user } = useAuth();
+
   return (
     <BrowserRouter>
       <Routes>
@@ -50,7 +54,17 @@ function App() {
           element={
             <ProtectedRoute>
               <Layout>
-                <CreateInvoice />
+                {user?.role === 'VIEWER' ? <Navigate to="/invoices" replace /> : <CreateInvoice />}
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/invoices/:id/edit"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                {user?.role === 'VIEWER' ? <Navigate to="/invoices" replace /> : <EditInvoice />}
               </Layout>
             </ProtectedRoute>
           }

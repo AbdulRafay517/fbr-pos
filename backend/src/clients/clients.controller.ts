@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, Put, Delete } from '@nestjs/common';
 import { ClientsService } from './clients.service';
 import { CreateClientDto } from './dto/create-client.dto';
 import { CreateBranchDto } from '../branches/dto/create-branch.dto';
@@ -24,12 +24,6 @@ export class ClientsController {
     return this.clientsService.findAll();
   }
 
-  @Get(':id')
-  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.VIEWER)
-  findOne(@Param('id') id: string) {
-    return this.clientsService.findOne(id);
-  }
-
   @Post(':id/branches')
   @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   createBranch(
@@ -46,5 +40,42 @@ export class ClientsController {
   @Roles(UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.VIEWER)
   findBranches(@Param('id') clientId: string) {
     return this.clientsService.findBranches(clientId);
+  }
+
+  @Put(':id/branches/:branchId')
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
+  updateBranch(
+    @Param('id') clientId: string,
+    @Param('branchId') branchId: string,
+    @Body() updateBranchDto: Partial<CreateBranchDto>,
+  ) {
+    return this.clientsService.updateBranch(clientId, branchId, updateBranchDto);
+  }
+
+  @Delete(':id/branches/:branchId')
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
+  removeBranch(
+    @Param('id') clientId: string,
+    @Param('branchId') branchId: string,
+  ) {
+    return this.clientsService.removeBranch(clientId, branchId);
+  }
+
+  @Get(':id')
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.VIEWER)
+  findOne(@Param('id') id: string) {
+    return this.clientsService.findOne(id);
+  }
+
+  @Put(':id')
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
+  update(@Param('id') id: string, @Body() updateClientDto: Partial<CreateClientDto>) {
+    return this.clientsService.update(id, updateClientDto);
+  }
+
+  @Delete(':id')
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
+  remove(@Param('id') id: string) {
+    return this.clientsService.remove(id);
   }
 } 

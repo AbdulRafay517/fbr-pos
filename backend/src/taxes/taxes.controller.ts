@@ -9,31 +9,35 @@ import { UserRole } from '@prisma/client';
 
 @Controller('taxes')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
 export class TaxesController {
   constructor(private readonly taxesService: TaxesService) {}
 
   @Post()
+  @Roles(UserRole.ADMIN)
   create(@Body() dto: CreateTaxRuleDto) {
     return this.taxesService.create(dto);
   }
 
   @Get()
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.VIEWER)
   findAll() {
     return this.taxesService.findAll();
   }
 
   @Get(':id')
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.VIEWER)
   findOne(@Param('id') id: string) {
     return this.taxesService.findOne(id);
   }
 
   @Put(':id')
+  @Roles(UserRole.ADMIN)
   update(@Param('id') id: string, @Body() dto: UpdateTaxRuleDto) {
     return this.taxesService.update(id, dto);
   }
 
   @Delete(':id')
+  @Roles(UserRole.ADMIN)
   remove(@Param('id') id: string) {
     return this.taxesService.remove(id);
   }

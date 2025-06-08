@@ -56,8 +56,8 @@ export class PdfService {
         doc
           .text(item.description, 50, y)
           .text(item.quantity.toString(), 300, y)
-          .text(`$${item.unitPrice.toFixed(2)}`, 400, y)
-          .text(`$${item.total.toFixed(2)}`, 500, y);
+          .text(`Rs ${item.unitPrice.toLocaleString()}`, 400, y)
+          .text(`Rs ${item.total.toLocaleString()}`, 500, y);
         y += 20;
       });
 
@@ -65,11 +65,11 @@ export class PdfService {
       const totalsY = y + 20;
       doc
         .text('Subtotal:', 400, totalsY)
-        .text(`$${invoice.subtotal.toFixed(2)}`, 500, totalsY)
+        .text(`Rs ${invoice.subtotal.toLocaleString()}`, 500, totalsY)
         .text('Tax:', 400, totalsY + 20)
-        .text(`$${invoice.taxAmount.toFixed(2)}`, 500, totalsY + 20)
+        .text(`Rs ${invoice.taxAmount.toLocaleString()}`, 500, totalsY + 20)
         .text('Total:', 400, totalsY + 40)
-        .text(`$${invoice.totalAmount.toFixed(2)}`, 500, totalsY + 40);
+        .text(`Rs ${invoice.totalAmount.toLocaleString()}`, 500, totalsY + 40);
 
       // Notes
       if (invoice.notes) {

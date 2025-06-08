@@ -55,3 +55,64 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+/* Print styles for invoices */
+@media print {
+  @page {
+    margin: 0.5in;
+    size: A4;
+  }
+  
+  body {
+    font-size: 12pt;
+    line-height: 1.4;
+    color: black !important;
+    background: white !important;
+  }
+  
+  /* Hide navigation, buttons, and non-essential elements */
+  nav,
+  .print\\:hidden {
+    display: none !important;
+  }
+  
+  /* Ensure invoice content uses full width */
+  .print\\:w-full {
+    width: 100% !important;
+  }
+  
+  /* Remove shadows and borders that don't print well */
+  .print\\:shadow-none {
+    box-shadow: none !important;
+  }
+  
+  /* Ensure tables break properly */
+  table {
+    page-break-inside: auto;
+  }
+  
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+  
+  thead {
+    display: table-header-group;
+  }
+  
+  /* Ensure proper spacing for invoice sections */
+  .invoice-section {
+    page-break-inside: avoid;
+    margin-bottom: 1rem;
+  }
+  
+  /* Make sure text is readable */
+  h1, h2, h3, h4, h5, h6 {
+    color: black !important;
+  }
+  
+  /* Ensure borders show up in print */
+  .border, .border-t, .border-b, .border-l, .border-r {
+    border-color: black !important;
+  }
+}

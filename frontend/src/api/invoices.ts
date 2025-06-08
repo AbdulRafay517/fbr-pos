@@ -53,6 +53,7 @@ export interface InvoiceStatusHistory {
 export interface CreateInvoiceData {
   clientId: string;
   branchId: string;
+  taxRuleId?: string;
   date?: string;
   dueDate?: string;
   items: {
@@ -107,7 +108,7 @@ export const invoicesApi = {
   getById: (id: string) => 
     api.get<Invoice>(`/invoices/${id}`),
 
-  update: (id: string, data: Partial<CreateInvoiceData>) => 
+  update: (id: string, data: Partial<CreateInvoiceData> & { taxRuleId?: string }) => 
     api.put<Invoice>(`/invoices/${id}`, data),
 
   delete: (id: string) => 

@@ -7,7 +7,7 @@ import InvoiceStatusBadge from "../components/InvoiceStatusBadge";
 import InvoiceStatusModal from "../components/InvoiceStatusModal";
 
 export default function Invoices() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState("");
@@ -16,6 +16,9 @@ export default function Invoices() {
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+
+  // Check if user can perform CRUD operations (not VIEWER)
+  const canModify = user?.role !== 'VIEWER';
 
   const fetchInvoices = async () => {
     try {
@@ -43,7 +46,7 @@ export default function Invoices() {
   }, [token, page, statusFilter]);
 
   const handleStatusUpdate = async (data: UpdateInvoiceStatusData) => {
-    if (!selectedInvoice) return;
+    if (!selectedInvoice || !canModify) return;
 
     try {
       await invoicesApi.updateStatus(selectedInvoice.id, data);
@@ -55,6 +58,8 @@ export default function Invoices() {
   };
 
   const handleQuickStatusUpdate = async (invoice: Invoice, status: InvoiceStatus) => {
+    if (!canModify) return;
+    
     try {
       await invoicesApi.updateStatus(invoice.id, { status });
       await fetchInvoices(); // Refresh the list
@@ -64,6 +69,7 @@ export default function Invoices() {
   };
 
   const openStatusModal = (invoice: Invoice) => {
+    if (!canModify) return;
     setSelectedInvoice(invoice);
     setIsStatusModalOpen(true);
   };
@@ -71,6 +77,72 @@ export default function Invoices() {
   const closeStatusModal = () => {
     setSelectedInvoice(null);
     setIsStatusModalOpen(false);
+  };
+
+  const handleDownloadPdf = async (invoiceId: string, invoiceNumber: string) => {
+    try {
+      const response = await invoicesApi.downloadPdf(invoiceId);
+      
+      // Create blob from response
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      
+      // Create download link
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `invoice-${invoiceNumber}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download PDF:', error);
+      alert('Failed to download PDF. Please try again.');
+    }
+  };
+
+  const handleDeleteInvoice = async (invoiceId: string, invoiceNumber: string) => {
+    if (!canModify) {
+      alert('You do not have permission to delete invoices.');
+      return;
+    }
+    
+    if (!confirm(`Are you sure you want to delete invoice ${invoiceNumber}? This action cannot be undone.`)) {
+      return;
+    }
+    
+    try {
+      console.log(`Attempting to delete invoice ${invoiceId}...`);
+      console.log('User role:', user?.role);
+      console.log('Can modify:', canModify);
+      
+      const response = await invoicesApi.delete(invoiceId);
+      console.log('Delete response:', response);
+      
+      // Show success message
+      alert(`Invoice ${invoiceNumber} has been deleted successfully.`);
+      
+      // Refresh the list
+      await fetchInvoices();
+    } catch (error: any) {
+      console.error('Failed to delete invoice:', error);
+      
+      // Show detailed error message
+      let errorMessage = 'Failed to delete invoice.';
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.status === 403) {
+        errorMessage = 'You do not have permission to delete this invoice.';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Invoice not found.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      alert(`Error: ${errorMessage}`);
+    }
   };
 
   if (loading && page === 1) return <div className="p-6">Loading...</div>;
@@ -117,12 +189,14 @@ export default function Invoices() {
                 <option value="OVERDUE">Overdue</option>
               </select>
             </div>
-      <Link
-        to="/invoices/new"
-              className="ml-auto bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-      >
-        + New Invoice
-      </Link>
+            {canModify && (
+              <Link
+                to="/invoices/new"
+                className="ml-auto bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+              >
+                + New Invoice
+              </Link>
+            )}
           </div>
         </div>
 
@@ -138,8 +212,8 @@ export default function Invoices() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-          </tr>
-        </thead>
+              </tr>
+            </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {invoices.map((invoice) => (
                 <tr key={invoice.id} className="hover:bg-gray-50">
@@ -163,40 +237,63 @@ export default function Invoices() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center space-x-2">
-                <Link
+                      <Link
                         to={`/invoices/${invoice.id}`}
                         className="text-blue-600 hover:text-blue-900"
-                >
-                  View
-                </Link>
-                      <button
-                        onClick={() => openStatusModal(invoice)}
-                        className="text-gray-600 hover:text-gray-900"
                       >
-                        Status
+                        View
+                      </Link>
+                      <button
+                        onClick={() => handleDownloadPdf(invoice.id, invoice.invoiceNumber)}
+                        className="text-purple-600 hover:text-purple-900"
+                        title="Download PDF"
+                      >
+                        PDF
                       </button>
-                      {invoice.status === 'UNPAID' && (
-                        <button
-                          onClick={() => handleQuickStatusUpdate(invoice, 'PAID')}
-                          className="text-green-600 hover:text-green-900"
-                        >
-                          Mark Paid
-                        </button>
-                      )}
-                      {invoice.status === 'PAID' && (
-                        <button
-                          onClick={() => handleQuickStatusUpdate(invoice, 'UNPAID')}
-                          className="text-yellow-600 hover:text-yellow-900"
-                        >
-                          Mark Unpaid
-                        </button>
+                      {canModify && (
+                        <>
+                          <Link
+                            to={`/invoices/${invoice.id}/edit`}
+                            className="text-indigo-600 hover:text-indigo-900"
+                          >
+                            Edit
+                          </Link>
+                          <button
+                            onClick={() => handleDeleteInvoice(invoice.id, invoice.invoiceNumber)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            Delete
+                          </button>
+                          <button
+                            onClick={() => openStatusModal(invoice)}
+                            className="text-gray-600 hover:text-gray-900"
+                          >
+                            Status
+                          </button>
+                          {invoice.status === 'UNPAID' && (
+                            <button
+                              onClick={() => handleQuickStatusUpdate(invoice, 'PAID')}
+                              className="text-green-600 hover:text-green-900"
+                            >
+                              Mark Paid
+                            </button>
+                          )}
+                          {invoice.status === 'PAID' && (
+                            <button
+                              onClick={() => handleQuickStatusUpdate(invoice, 'UNPAID')}
+                              className="text-yellow-600 hover:text-yellow-900"
+                            >
+                              Mark Unpaid
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
         {/* Pagination */}
@@ -226,14 +323,19 @@ export default function Invoices() {
 
         {invoices.length === 0 && !loading && (
           <div className="p-6 text-center text-gray-500">
-            {statusFilter ? `No ${statusFilter.toLowerCase()} invoices found.` : 'No invoices found.'}{' '}
-            <Link to="/invoices/new" className="text-blue-600 hover:underline">Create your first invoice</Link>
+            {statusFilter ? `No ${statusFilter.toLowerCase()} invoices found.` : 'No invoices found.'}
+            {canModify && (
+              <>
+                {' '}
+                <Link to="/invoices/new" className="text-blue-600 hover:underline">Create your first invoice</Link>
+              </>
+            )}
           </div>
         )}
       </div>
 
-      {/* Status Update Modal */}
-      {selectedInvoice && (
+      {/* Status Update Modal - Only show for users who can modify */}
+      {selectedInvoice && canModify && (
         <InvoiceStatusModal
           isOpen={isStatusModalOpen}
           onClose={closeStatusModal}

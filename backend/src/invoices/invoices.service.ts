@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
@@ -8,6 +8,8 @@ import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class InvoicesService {
+  private readonly logger = new Logger(InvoicesService.name);
+
   constructor(
     private prisma: PrismaService,
     private pdfService: PdfService,
@@ -31,13 +33,25 @@ export class InvoicesService {
       throw new NotFoundException('Branch not found for this client');
     }
 
-    // Get tax rule for the branch's province
-    const taxRule = await this.prisma.taxRule.findUnique({
-      where: { province: branch.province },
-    });
+    // Get tax rule - either from explicit taxRuleId or from branch province
+    let taxRule;
+    if (createInvoiceDto.taxRuleId) {
+      // Use explicit tax rule
+      taxRule = await this.prisma.taxRule.findUnique({
+        where: { id: createInvoiceDto.taxRuleId },
+      });
+      if (!taxRule) {
+        throw new NotFoundException(`Tax rule not found with id: ${createInvoiceDto.taxRuleId}`);
+      }
+    } else {
+      // Use branch-based tax rule
+      taxRule = await this.prisma.taxRule.findUnique({
+        where: { province: branch.province },
+      });
 
-    if (!taxRule) {
-      throw new NotFoundException(`Tax rule not found for province: ${branch.province}`);
+      if (!taxRule) {
+        throw new NotFoundException(`Tax rule not found for province: ${branch.province}`);
+      }
     }
 
     // Calculate totals
@@ -346,53 +360,66 @@ export class InvoicesService {
       }
     }
 
-    // If items are being updated, recalculate totals
+    // If items are being updated or tax rule is changed, recalculate totals
     let subtotal = invoice.subtotal;
     let taxAmount = invoice.taxAmount;
     let totalAmount = invoice.totalAmount;
 
-    if (updateInvoiceDto.items) {
-      // Delete existing items
-      await this.prisma.invoiceItem.deleteMany({
-        where: { invoiceId: id },
-      });
+    if (updateInvoiceDto.items || updateInvoiceDto.taxRuleId) {
+      // If items are being updated, delete existing items and calculate new subtotal
+      if (updateInvoiceDto.items) {
+        await this.prisma.invoiceItem.deleteMany({
+          where: { invoiceId: id },
+        });
 
-      // Calculate new totals
-      subtotal = updateInvoiceDto.items.reduce(
-        (sum, item) => sum + item.quantity * item.unitPrice,
-        0
-      );
+        subtotal = updateInvoiceDto.items.reduce(
+          (sum, item) => sum + item.quantity * item.unitPrice,
+          0
+        );
 
-      // Get tax rule for the branch
-      const branch = await this.prisma.branch.findUnique({
-        where: { id: updateInvoiceDto.branchId || invoice.branchId },
-      });
-
-      if (!branch) {
-        throw new NotFoundException('Branch not found');
+        // Create new items
+        await this.prisma.invoiceItem.createMany({
+          data: updateInvoiceDto.items.map(item => ({
+            description: item.description,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            total: item.quantity * item.unitPrice,
+            invoiceId: id,
+          })),
+        });
       }
 
-      const taxRule = await this.prisma.taxRule.findUnique({
-        where: { province: branch.province },
-      });
+      // Get tax rule - either from explicit taxRuleId or from branch province
+      let taxRule;
+      if (updateInvoiceDto.taxRuleId) {
+        // Use explicit tax rule
+        taxRule = await this.prisma.taxRule.findUnique({
+          where: { id: updateInvoiceDto.taxRuleId },
+        });
+        if (!taxRule) {
+          throw new NotFoundException(`Tax rule not found with id: ${updateInvoiceDto.taxRuleId}`);
+        }
+      } else {
+        // Use branch-based tax rule
+        const branch = await this.prisma.branch.findUnique({
+          where: { id: updateInvoiceDto.branchId || invoice.branchId },
+        });
 
-      if (!taxRule) {
-        throw new NotFoundException(`Tax rule not found for province: ${branch.province}`);
+        if (!branch) {
+          throw new NotFoundException('Branch not found');
+        }
+
+        taxRule = await this.prisma.taxRule.findUnique({
+          where: { province: branch.province },
+        });
+
+        if (!taxRule) {
+          throw new NotFoundException(`Tax rule not found for province: ${branch.province}`);
+        }
       }
 
       taxAmount = subtotal * (taxRule.percentage / 100);
       totalAmount = subtotal + taxAmount;
-
-      // Create new items
-      await this.prisma.invoiceItem.createMany({
-        data: updateInvoiceDto.items.map(item => ({
-          description: item.description,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          total: item.quantity * item.unitPrice,
-          invoiceId: id,
-        })),
-      });
     }
 
     // Update invoice
@@ -418,22 +445,39 @@ export class InvoicesService {
   async remove(id: string) {
     const invoice = await this.prisma.invoice.findUnique({
       where: { id },
+      include: {
+        items: true,
+        statusHistory: true,
+      },
     });
 
     if (!invoice) {
       throw new NotFoundException('Invoice not found');
     }
 
-    // Delete invoice items first (due to foreign key constraint)
-    await this.prisma.invoiceItem.deleteMany({
-      where: { invoiceId: id },
-    });
+    try {
+      // Delete all related records first (due to foreign key constraints)
+      
+      // Delete invoice status history
+      await this.prisma.invoiceStatusHistory.deleteMany({
+        where: { invoiceId: id },
+      });
 
-    // Delete the invoice
-    await this.prisma.invoice.delete({
-      where: { id },
-    });
+      // Delete invoice items
+      await this.prisma.invoiceItem.deleteMany({
+        where: { invoiceId: id },
+      });
 
-    return { message: 'Invoice deleted successfully' };
+      // Finally delete the invoice
+      await this.prisma.invoice.delete({
+        where: { id },
+      });
+
+      this.logger.log(`Invoice ${invoice.invoiceNumber} deleted successfully`);
+      return { message: 'Invoice deleted successfully' };
+    } catch (error) {
+      this.logger.error(`Failed to delete invoice ${id}:`, error);
+      throw new BadRequestException('Failed to delete invoice. It may be referenced by other records.');
+    }
   }
 } 

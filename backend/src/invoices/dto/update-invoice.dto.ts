@@ -11,6 +11,10 @@ export class UpdateInvoiceDto {
   branchId?: string;
 
   @IsOptional()
+  @IsUUID()
+  taxRuleId?: string;
+
+  @IsOptional()
   @IsArray()
   items?: InvoiceItemDto[];
 

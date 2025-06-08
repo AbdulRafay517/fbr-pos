@@ -1,19 +1,13 @@
 import { useEffect, useState } from "react";
 import { invoicesApi } from "../api/invoices";
-import type { CreateInvoiceData } from "../api/invoices";
+import type { CreateInvoiceData, Invoice } from "../api/invoices";
 import axios from "../api/axios";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 type Client = {
   id: string;
   name: string;
   branches: { id: string; name: string; city: string; province: string }[];
-};
-
-type Item = {
-  description: string;
-  quantity: number;
-  unitPrice: number;
 };
 
 type TaxRule = {
@@ -23,13 +17,21 @@ type TaxRule = {
   isActive: boolean;
 };
 
-export default function CreateInvoice() {
+type Item = {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+};
+
+export default function EditInvoice() {
+  const { id } = useParams();
+  const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [taxRules, setTaxRules] = useState<TaxRule[]>([]);
   const [clientId, setClientId] = useState("");
   const [branchId, setBranchId] = useState("");
   const [selectedTaxRuleId, setSelectedTaxRuleId] = useState("");
-  const [issueDate, setIssueDate] = useState(new Date().toISOString().split('T')[0]);
+  const [issueDate, setIssueDate] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [items, setItems] = useState<Item[]>([
     { description: "", quantity: 1, unitPrice: 0 },
@@ -37,33 +39,70 @@ export default function CreateInvoice() {
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Fetch clients and tax rules
+    // Fetch invoice data and related data
     Promise.all([
+      invoicesApi.getById(id!),
       axios.get("/clients"),
       axios.get("/taxes")
-    ]).then(([clientsRes, taxesRes]) => {
+    ]).then(([invoiceRes, clientsRes, taxesRes]) => {
+      const invoiceData = invoiceRes.data;
+      setInvoice(invoiceData);
+      
+      // Pre-populate form with existing invoice data
+      setClientId(invoiceData.client.id);
+      setBranchId(invoiceData.branch.id);
+      setIssueDate(invoiceData.date.split('T')[0]); // Convert to YYYY-MM-DD format
+      setDueDate(invoiceData.dueDate ? invoiceData.dueDate.split('T')[0] : "");
+      setItems(invoiceData.items.map((item: any) => ({
+        description: item.description,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice
+      })));
+      setNotes(invoiceData.notes || "");
+      
       setClients(clientsRes.data);
-      setTaxRules(taxesRes.data.filter((rule: TaxRule) => rule.isActive));
+      const activeTaxRules = taxesRes.data.filter((rule: TaxRule) => rule.isActive);
+      setTaxRules(activeTaxRules);
+      
+      // Find and set the current tax rule based on the invoice's tax percentage and branch province
+      const currentTaxPercentage = invoiceData.taxAmount > 0 ? 
+        (invoiceData.taxAmount / invoiceData.subtotal) * 100 : 0;
+      
+      const matchingTaxRule = activeTaxRules.find((rule: TaxRule) => 
+        rule.province.toLowerCase() === invoiceData.branch.province.toLowerCase() ||
+        Math.abs(rule.percentage - currentTaxPercentage) < 0.01 // Allow small floating point differences
+      );
+      
+      if (matchingTaxRule) {
+        setSelectedTaxRuleId(matchingTaxRule.id);
+      } else if (activeTaxRules.length > 0) {
+        // Fallback to first available tax rule if no exact match
+        setSelectedTaxRuleId(activeTaxRules[0].id);
+      }
+      
+      setLoading(false);
     }).catch(err => {
       console.error("Failed to fetch data:", err);
-      setError("Failed to load data. Please refresh the page.");
+      setError("Failed to load invoice data. Please try again.");
+      setLoading(false);
     });
-  }, []);
+  }, [id]);
 
   const branches = clients.find((c) => c.id === clientId)?.branches || [];
   const selectedBranch = branches.find(b => b.id === branchId);
   const selectedTaxRule = taxRules.find(rule => rule.id === selectedTaxRuleId);
 
-  // Auto-select tax rule based on branch province
+  // Auto-select tax rule based on branch province (only if no tax rule is currently selected)
   useEffect(() => {
-    if (selectedBranch && taxRules.length > 0) {
+    if (selectedBranch && taxRules.length > 0 && !selectedTaxRuleId) {
       const matchingTaxRule = taxRules.find(rule => 
         rule.province.toLowerCase() === selectedBranch.province.toLowerCase()
       );
-      if (matchingTaxRule && matchingTaxRule.id !== selectedTaxRuleId) {
+      if (matchingTaxRule) {
         setSelectedTaxRuleId(matchingTaxRule.id);
       }
     }
@@ -90,7 +129,7 @@ export default function CreateInvoice() {
     setError("");
     setSubmitting(true);
     try {
-      const invoiceData: CreateInvoiceData = {
+      const invoiceData: Partial<CreateInvoiceData> & { taxRuleId?: string } = {
         clientId,
         branchId,
         taxRuleId: selectedTaxRuleId || undefined,
@@ -100,21 +139,24 @@ export default function CreateInvoice() {
         notes: notes || undefined,
       };
       
-      await invoicesApi.create(invoiceData);
+      await invoicesApi.update(id!, invoiceData);
       navigate("/invoices");
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to create invoice");
+      setError(err.response?.data?.message || "Failed to update invoice");
     } finally {
       setSubmitting(false);
     }
   };
 
+  if (loading) return <div className="p-6">Loading...</div>;
+  if (!invoice) return <div className="p-6 text-red-600">Invoice not found.</div>;
+
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Create Invoice</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Edit Invoice</h1>
         <nav className="text-sm text-gray-500">
-          <span>Create Invoice</span>
+          <span>Edit Invoice #{invoice.invoiceNumber}</span>
         </nav>
       </div>
 
@@ -136,8 +178,8 @@ export default function CreateInvoice() {
                   value={clientId}
                   onChange={e => {
                     setClientId(e.target.value);
-                    setBranchId(""); // reset branch when client changes
-                    setSelectedTaxRuleId(""); // reset tax rule when client changes
+                    setBranchId(""); 
+                    setSelectedTaxRuleId(""); 
                   }}
                   required
                 >
@@ -147,8 +189,9 @@ export default function CreateInvoice() {
                   ))}
                 </select>
               </div>
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Client Branch</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Branch</label>
                 <select
                   className="w-full border border-gray-300 rounded-md px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={branchId}
@@ -170,25 +213,49 @@ export default function CreateInvoice() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Tax Rule</label>
-                <select
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={selectedTaxRuleId}
-                  onChange={e => setSelectedTaxRuleId(e.target.value)}
-                  required
-                >
-                  <option value="">Select Tax Rule</option>
-                  {taxRules.map(rule => (
-                    <option key={rule.id} value={rule.id}>
-                      {rule.province} - {rule.percentage}%
-                    </option>
-                  ))}
-                </select>
+                <div className="flex gap-2">
+                  <select
+                    className="flex-1 border border-gray-300 rounded-md px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={selectedTaxRuleId}
+                    onChange={e => setSelectedTaxRuleId(e.target.value)}
+                    required
+                  >
+                    <option value="">Select Tax Rule</option>
+                    {taxRules.map(rule => (
+                      <option key={rule.id} value={rule.id}>
+                        {rule.province} - {rule.percentage}%
+                      </option>
+                    ))}
+                  </select>
+                  {selectedBranch && selectedTaxRule && selectedTaxRule.province.toLowerCase() !== selectedBranch.province.toLowerCase() && (
+                    <button
+                      type="button"
+                      className="px-3 py-2 text-xs bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 whitespace-nowrap"
+                      onClick={() => {
+                        const recommendedRule = taxRules.find(r => 
+                          r.province.toLowerCase() === selectedBranch.province.toLowerCase()
+                        );
+                        if (recommendedRule) {
+                          setSelectedTaxRuleId(recommendedRule.id);
+                        }
+                      }}
+                      title="Use recommended tax rule for this province"
+                    >
+                      Use Recommended
+                    </button>
+                  )}
+                </div>
                 {selectedBranch && (
                   <p className="text-xs text-gray-500 mt-1">
                     {taxRules.find(r => r.province.toLowerCase() === selectedBranch.province.toLowerCase()) ? 
-                      `Auto-selected for ${selectedBranch.province}` : 
+                      `Recommended for ${selectedBranch.province}` : 
                       `No matching tax rule found for ${selectedBranch.province}`
                     }
+                    {selectedTaxRule && selectedTaxRule.province.toLowerCase() !== selectedBranch.province.toLowerCase() && (
+                      <span className="text-orange-600 ml-1">
+                        (Manual override)
+                      </span>
+                    )}
                   </p>
                 )}
               </div>
@@ -206,7 +273,7 @@ export default function CreateInvoice() {
               </div>
             </div>
 
-            {/* Dates and Total Amount */}
+            {/* Dates and Total */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Issue Date</label>
@@ -240,16 +307,16 @@ export default function CreateInvoice() {
 
             {/* Items Table */}
             <div>
-                              <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-medium text-gray-900">Invoice Items</h3>
-                  <div className="text-sm text-gray-500">
-                    {items.length > 1 ? (
-                      <span>{items.length} items • Click "Remove" to delete individual items</span>
-                    ) : (
-                      <span>1 item • At least one item is required</span>
-                    )}
-                  </div>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Invoice Items</h3>
+                <div className="text-sm text-gray-500">
+                  {items.length > 1 ? (
+                    <span>{items.length} items • Click "Remove" to delete individual items</span>
+                  ) : (
+                    <span>1 item • At least one item is required</span>
+                  )}
                 </div>
+              </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
@@ -376,20 +443,20 @@ export default function CreateInvoice() {
             </div>
 
             {/* Actions */}
-            <div className="flex justify-end space-x-4 pt-6 border-t">
+            <div className="flex justify-end space-x-4">
               <button
                 type="button"
-                className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
                 onClick={() => navigate("/invoices")}
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-6 py-2 bg-blue-600 text-black rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                className="px-6 py-2 bg-blue-600 text-black rounded-md hover:bg-blue-700 disabled:opacity-50"
                 disabled={submitting}
               >
-                {submitting ? "Creating..." : "Create Invoice"}
+                {submitting ? "Updating..." : "Update Invoice"}
               </button>
             </div>
           </form>
@@ -397,4 +464,4 @@ export default function CreateInvoice() {
       </div>
     </div>
   );
-}
+} 
