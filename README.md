@@ -327,12 +327,3 @@ copies or substantial portions of the Software.
 - **Performance Score**: 95+ (Lighthouse)
 
 ---
-
-<div align="center">
-
-**⭐ Star this repository if you found it helpful!**
-
-[![GitHub stars](https://img.shields.io/github/stars/your-username/fbr-pos.svg?style=social&label=Star)](https://github.com/AbdulRafay517/fbr-pos)
-[![GitHub forks](https://img.shields.io/github/forks/your-username/fbr-pos.svg?style=social&label=Fork)](https://github.com/AbdulRafay517/fbr-pos/fork)
-
-</div> 
