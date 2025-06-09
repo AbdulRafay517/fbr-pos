@@ -23,6 +23,7 @@
   - `PORT=3000`  
   - `DATABASE_URL=<supabase-url>`
   - `JWT_SECRET=<random-32-char-string>`
+  - `JWT_EXPIRATION=24h`
   - `FRONTEND_URL=*` (update later)
 - [ ] Deploy and verify backend is running
 - [ ] Test health endpoint: `https://your-backend.onrender.com/api/health`

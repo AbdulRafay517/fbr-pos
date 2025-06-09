@@ -54,12 +54,14 @@ NODE_ENV=production
 PORT=3000
 DATABASE_URL=<your-supabase-connection-string>
 JWT_SECRET=<generate-a-strong-secret-key>
+JWT_EXPIRATION=24h
 FRONTEND_URL=<your-vercel-url-will-be-added-later>
 ```
 
 **Important**: 
 - For `JWT_SECRET`, generate a strong random string (at least 32 characters)
 - You can use: `openssl rand -base64 32` or an online generator
+- `JWT_EXPIRATION` sets how long tokens are valid (24h = 24 hours)
 - Leave `FRONTEND_URL` as `*` for now, update it after frontend deployment
 
 ### Step 4: Deploy
@@ -114,6 +116,7 @@ NODE_ENV=production
 PORT=3000
 DATABASE_URL=postgresql://postgres.xxx:[PASSWORD]@xxx.pooler.supabase.com:6543/postgres
 JWT_SECRET=your-32-character-random-string
+JWT_EXPIRATION=24h
 FRONTEND_URL=https://your-project.vercel.app
 ```
 
