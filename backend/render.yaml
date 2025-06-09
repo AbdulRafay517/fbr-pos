@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: fbr-pos-backend
+    env: node
+    plan: free
+    buildCommand: npm install && npm run build && npx prisma migrate deploy && npx prisma generate
+    startCommand: npm run start:prod
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fbr-pos-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        value: https://your-frontend-domain.vercel.app
+
+  - type: pserv
+    name: fbr-pos-db
+    env: postgresql
+    plan: free
+    databaseName: fbr_pos
+    databaseUser: fbr_pos_user 
