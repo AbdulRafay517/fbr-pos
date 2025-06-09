@@ -19,17 +19,6 @@ export default function Users() {
   const [submitting, setSubmitting] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
 
-  // Session configuration state
-  const [sessionConfig, setSessionConfig] = useState(() => {
-    const stored = localStorage.getItem("sessionConfig");
-    const defaultConfig = {
-      timeoutMinutes: 30,
-      warningMinutes: 5,
-      logoutOnTabClose: false,
-    };
-    return stored ? { ...defaultConfig, ...JSON.parse(stored) } : defaultConfig;
-  });
-
   const fetchUsers = () => {
     setLoading(true);
     axios.get("/users").then(res => {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Client, ClientType, CreateClientData } from "../api/clients";
+import type { Client, ClientType } from "../api/clients";
 import { clientsApi, getClientTypeColor } from "../api/clients";
 import { useAuth } from "../context/AuthContext";
 
